@@ -43,7 +43,7 @@
       <h1>Mick</h1>
       <p>@1984</p>
       <div class="classic-actions">
-        <a id="xat-presence" target="_blank" rel="noopener" title="Checking xat presence">Checking xat... <span class="online-status offline" aria-label="Checking">●</span><b>↗</b></a>
+        <a id="xat-status-button" target="_blank" aria-live="polite">Online (xat) <span id="xat-status-dot" class="online-status" aria-label="Checking status">●</span><b>↗</b></a>
         <a href="https://forum.xat.com/profile/30314/" target="_blank">Forum <b>↗</b></a>
         <a href="https://forum.xat.com/messenger/compose/?to=30314" target="_blank">Contact me <b>↗</b></a>
       </div>
@@ -114,9 +114,9 @@
             <div class="icon packet-icon-img"><img src="https://xat.com/content/web/R00250/img/navbar/auctions.svg" alt="XAT IDs"></div><small>XAT IDS</small><h3>Buy/Sell IDS</h3>
             <div class="id-table">
               <div class="thead"><b>IDS</b><b>REGLINK</b><b>PRICE</b></div>
-              <div><strong> <span class="id-bullet" aria-hidden="true">•</span>ID99000</strong><span class="good">✓</span><strong>150K</strong></div>
-              <div><strong> <span class="id-bullet" aria-hidden="true">•</span>ID1006001</strong><span class="bad">×</span><strong>75K</strong></div>
-              <div><strong> <span class="id-bullet" aria-hidden="true">•</span>ID1553333003</strong><span class="good">✓</span><strong>5K</strong></div>
+              <div><strong> <span class="id-bullet" aria-hidden="true">•</span>✦99000</strong><span class="good">✓</span><strong>150K</strong></div>
+              <div><strong> <span class="id-bullet" aria-hidden="true">•</span>✦1006001</strong><span class="bad">×</span><strong>75K</strong></div>
+              <div><strong> <span class="id-bullet" aria-hidden="true">•</span>✦1553333003</strong><span class="good">✓</span><strong>5K</strong></div>
             </div>
             <div class="currencies"><b>🪙</b> XATS <b>€</b> EUR <b>$</b> USD</div>
             <span class="arrow">↗</span>
@@ -135,7 +135,7 @@
   </section>
 
   <footer class="premium-footer">
-    <b>©</b>
+    <b>©MICK/1984</b>
     <span>privacy/cookies • terms of service • safety • © 2026 xat</span>
     <span>TRADING WITH DISCIPLINE · BUILDING VALUE FOR THE LONG TERM</span>
   </footer>
@@ -188,7 +188,43 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
 })();
 </script>
 
-<script src="status-config.js"></script>
-<script src="online-status.js"></script>
+
+<script>
+/* Live xat presence via Illuxat API */
+(function () {
+  const username = 'mick';
+  const endpoint = 'https://illuxat.com/api/online/' + encodeURIComponent(username);
+  const button = document.getElementById('xat-status-button');
+  const dot = document.getElementById('xat-status-dot');
+  if (!button || !dot) return;
+
+  function applyStatus(raw) {
+    const status = String(raw || 'Offline').trim();
+    const normalized = status.toLowerCase();
+    const isOnline = normalized === 'online' || normalized === 'available';
+    button.childNodes[0].nodeValue = (isOnline ? 'Online (xat) ' : 'Offline (xat) ');
+    dot.setAttribute('aria-label', status);
+    dot.style.color = normalized === 'online' ? '#22c55e' : normalized === 'available' ? '#eab308' : '#ef4444';
+    dot.style.textShadow = normalized === 'online' ? '0 0 12px rgba(34,197,94,.8)' : normalized === 'available' ? '0 0 12px rgba(234,179,8,.8)' : 'none';
+    button.title = 'xat status: ' + status;
+  }
+
+  async function updateStatus() {
+    try {
+      const response = await fetch(endpoint, { cache: 'no-store' });
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      const json = await response.json();
+      const status = json && json.data ? json.data.status : 'Offline';
+      applyStatus(status);
+    } catch (error) {
+      applyStatus('Offline');
+    }
+  }
+
+  updateStatus();
+  setInterval(updateStatus, 30000);
+})();
+</script>
+
 </body>
 </html>
