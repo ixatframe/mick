@@ -39,11 +39,11 @@
 
   <section id="profile" class="profile">
     <aside class="profile-card">
-      <div class="avatar"><img src="https://xatimg.com/image/iN1sVOnkIwGq.png" alt="Mick profile photo"><i>●</i><div class="avatar-ring"></div></div>
+      <div class="avatar"><img src="https://xatimg.com/image/iN1sVOnkIwGq.png" alt="Mick profile photo"><i class="verified-badge" aria-label="Verified">✓</i><div class="avatar-ring"></div></div>
       <h1>Mick</h1>
       <p>@1984</p>
       <div class="classic-actions">
-        <a target="_blank">Online (xat) <b>↗</b></a>
+        <a id="xat-presence" target="_blank" rel="noopener" title="Checking xat presence">Checking xat... <span class="online-status offline" aria-label="Checking">●</span><b>↗</b></a>
         <a href="https://forum.xat.com/profile/30314/" target="_blank">Forum <b>↗</b></a>
         <a href="https://forum.xat.com/messenger/compose/?to=30314" target="_blank">Contact me <b>↗</b></a>
       </div>
@@ -74,20 +74,19 @@
 
       <section id="latest" class="latest panel premium-panel">
         <div class="power-image">
-          <img id="latestPowerImage" src="https://xat.com/images/smw/selfcare.png" alt="Latest power">
+          <img src="https://xat.com/images/smw/selfcare.png" alt="Selfcare power">
         </div>
         <div class="latest-content">
-          <div class="section-title"><span>01</span><h3>Latest Power <i id="latestPowerName">Selfcare</i></h3><b id="latestPowerBadge">Limited</b></div>
+          <div class="section-title"><span>01</span><h3>Latest Power</h3><b>Limited</b></div>
           <p class="sub">Latest power available for trading</p>
           <div class="power-grid">
-            <div><strong id="latestPowerId">#750</strong><small>ID</small></div>
-            <div><strong id="latestPowerPrice">300 xats</strong><small>PRICE</small></div>
-            <div><strong id="latestPowerStatus">Limited</strong><small>STORE STATUS</small></div>
-            <div><strong id="latestPowerXats">400 - 500</strong><small>XATS</small></div>
-            <div><strong id="latestPowerDays">29 - 37</strong><small>DAYS</small></div>
+            <div><strong>#750</strong><small>ID</small></div>
+            <div><strong>300 xats</strong><small>PRICE</small></div>
+            <div><strong>Limited</strong><small>STORE STATUS</small></div>
+            <div><strong>400 - 500</strong><small>XATS</small></div>
+            <div><strong>29 - 37</strong><small>DAYS</small></div>
           </div>
-          <a id="latestPowerLink" class="info-btn" href="https://illuxat.com/en/smiley/latestpower" target="_blank" rel="noopener">Latest power information →</a>
-          <span id="latestPowerUpdate" class="latest-update">Live data enabled</span>
+          <a class="info-btn" href="https://wiki.xat.com/Selfcare" target="_blank" rel="noopener">Information about the power →</a>
         </div>
       </section>
 
@@ -189,6 +188,7 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
 })();
 </script>
 
-<script src="latest-power.js"></script>
+<script src="status-config.js"></script>
+<script src="online-status.js"></script>
 </body>
 </html>
