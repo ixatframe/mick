@@ -1290,3 +1290,19 @@ footer span{opacity:.72}
   color:#08a8e4!important;
   box-shadow:0 0 14px rgba(24,180,232,.16)!important;
 }
+
+/* Skrill on its own row */
+.payment-methods{
+  flex-wrap:wrap!important;
+  max-width:330px;
+}
+.payment-pill.skrill{
+  flex-basis:max-content;
+  margin-top:0;
+}
+.payment-icon img{
+  width:16px!important;
+  height:16px!important;
+  display:block!important;
+  object-fit:contain!important;
+}
