@@ -1306,3 +1306,22 @@ footer span{opacity:.72}
   display:block!important;
   object-fit:contain!important;
 }
+
+
+/* Profile stats: three columns */
+.profile-stats{grid-template-columns:repeat(3,minmax(0,1fr));gap:0}
+.profile-stats div+div{border-left:1px solid #e3e6e9;padding-left:12px}
+.profile-stats div{min-width:0}
+.profile-stats b{white-space:nowrap;font-size:15px}
+.profile-stats small{white-space:nowrap;font-size:6.5px;letter-spacing:.09em}
+@media(max-width:520px){
+  .profile-stats{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .profile-stats div+div{padding-left:8px}
+  .profile-stats b{font-size:13px}
+  .profile-stats small{font-size:5.5px;letter-spacing:.06em}
+}
+
+/* Profile views: compact value with exact total underneath */
+.profile-stats .views-stat #profile-views-real{display:block;margin-top:2px;font-size:8px;line-height:1;color:#8d969d;font-weight:600;letter-spacing:.01em;white-space:nowrap}
+.profile-stats .views-stat small{display:block;margin-top:4px}
+@media(max-width:700px){.profile-stats .views-stat #profile-views-real{font-size:6px}.profile-stats .views-stat small{margin-top:3px}}
