@@ -48,10 +48,10 @@
         <a href="https://forum.xat.com/profile/30314/" target="_blank">Profile Forum <b>↗</b></a>
         <a href="https://forum.xat.com/messenger/compose/?to=30314" target="_blank">Contact me <b>↗</b></a>
       </div>
-      <div class="profile-stats">
-        <div><b>/2014</b><small>MEMBER SINCE</small></div>
-        <div><b>/1984</b><small>PROFILE ID</small></div>
-        <div class="views-stat"><b id="profile-views" title="Profile views">1,2M</b><span id="profile-views-real">(1.200.000)</span><small>PROFILE VIEWS</small></div>
+      <div class="profile-stats profile-stats-3">
+        <div><b>2014</b><small>MEMBER SINCE</small></div>
+        <div><b>1984</b><small>PROFILE ID</small></div>
+        <div class="views-stat"><b id="profileViewsCompact">1,2M</b><span id="profileViewsReal">(1.200.000)</span><small>PROFILE VIEWS</small></div>
       </div>
     </aside>
 
@@ -216,34 +216,36 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
 </script>
 
 <script>
-/* Profile views counter: starts at 1.2M and increases once per page load in this browser */
-(function () {
-  const START_VIEWS = 1200000;
-  const STORAGE_KEY = 'mick-profile-views';
-  const viewElement = document.getElementById('profile-views');
-  const realViewElement = document.getElementById('profile-views-real');
-  if (!viewElement) return;
+// Global Profile Views counter. Works on GitHub Pages without PHP.
+(() => {
+  const BASE_VIEWS = 1200000;
+  const API = 'https://abacus.jasoncameron.dev/hit/mick1984-xatspace/profile-views';
+  const compactEl = document.getElementById('profileViewsCompact');
+  const realEl = document.getElementById('profileViewsReal');
 
-  let views = Number(localStorage.getItem(STORAGE_KEY));
-  if (!Number.isFinite(views) || views < START_VIEWS) views = START_VIEWS;
-  views += 1;
-  localStorage.setItem(STORAGE_KEY, String(views));
-
-  // Compact format: 1,200,000 = 1,2M, 1,300,000 = 1,3M, etc.
-  function formatViews(value) {
-    if (value >= 1000000) {
-      return (Math.floor(value / 100000) / 10).toFixed(1).replace('.', ',') + 'M';
-    }
-    if (value >= 1000) {
-      return (value / 1000).toFixed(1).replace('.', ',') + 'K';
-    }
-    return String(value);
+  function formatCompact(value) {
+    return (value / 1000000).toFixed(1).replace('.', ',') + 'M';
   }
 
-  viewElement.textContent = formatViews(views);
-  const realViews = new Intl.NumberFormat('ro-RO').format(views);
-  if (realViewElement) realViewElement.textContent = '(' + realViews + ')';
-  viewElement.title = realViews + ' profile views';
+  function render(apiValue) {
+    const total = BASE_VIEWS + Number(apiValue || 0);
+    if (compactEl) compactEl.textContent = formatCompact(total);
+    if (realEl) realEl.textContent = '(' + total.toLocaleString('en-US') + ')';
+  }
+
+  async function countView() {
+    try {
+      const response = await fetch(API + '?t=' + Date.now(), { cache: 'no-store' });
+      if (!response.ok) throw new Error('Counter API unavailable');
+      const data = await response.json();
+      render(data.value);
+    } catch (error) {
+      console.warn('Profile views counter:', error.message);
+      render(0);
+    }
+  }
+
+  countView();
 })();
 </script>
 
