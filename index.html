@@ -292,7 +292,7 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
 (function () {
   'use strict';
 
-  var SUPABASE_URL = 'https://odadikcmkeeoljfoysmz.supabase.co';
+  var SUPABASE_URL = 'https://odadikcmkeeolfjoysmz.supabase.co';
   var SUPABASE_KEY = 'sb_publishable_cfRaH4RXHjdQvDwH_NqlXw_u4oZ5vBA';
   var TABLE = 'reviews';
   var SUBMITTED_KEY = 'mick1984-review-submitted';
@@ -344,7 +344,7 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
     return {
       name: r.name || r.reviewer_name || 'Trader',
       type: r.trade_type || r.type || 'Trade',
-      text: r.review || r.text || r.feedback || '',
+      text: r.comment || r.review || r.text || r.feedback || '',
       rating: Number(r.rating) || 5,
       date: r.created_at || r.date || ''
     };
@@ -426,7 +426,7 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
 
     try {
       // Prevent the same xat name from being submitted twice when existing rows are readable.
-      var checkUrl = SUPABASE_URL + '/rest/v1/' + TABLE + '?select=id&name=ilike.' + encodeURIComponent(name) + '&limit=1';
+      var checkUrl = SUPABASE_URL + '/rest/v1/' + TABLE + '?select=id&reviewer_name=ilike.' + encodeURIComponent(name) + '&limit=1';
       var check = await fetch(checkUrl, { headers: headers() });
       if (check.ok) {
         var existing = await check.json();
@@ -436,11 +436,13 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
         }
       }
 
+      // Use the columns that exist in the current Supabase table.
+      // Do not send name/review because PostgREST reports those columns as unavailable.
       var payload = {
-        name: name,
+        reviewer_name: name,
         trade_type: typeEl ? typeEl.value : 'Trade',
         rating: selected,
-        review: text
+        comment: text
       };
 
       var response = await fetch(SUPABASE_URL + '/rest/v1/' + TABLE, {
