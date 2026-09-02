@@ -375,7 +375,7 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
     if (!latest.length) { recent.innerHTML=''; return; }
     recent.innerHTML='<div class="recent-title">LATEST REVIEWS</div>'+latest.map(function(r){
       var rating=Math.max(1,Math.min(5,Number(r.rating)||5));
-      var del=isAdmin() && r.id != null ? '<button type="button" class="delete-review" data-id="'+esc(r.id)+'" title="Delete review">DELETE</button>' : '';
+      var del=isAdmin() && r.id != null ? '<button type="button" class="delete-review" data-id="'+esc(r.id)+'" title="Delete review" onclick="return window.deleteReviewById(this.dataset.id,this)">DELETE</button>' : '';
       return '<article class="review-item"><div class="review-item-top"><b>'+esc(r.name)+'</b><div class="review-rating"><span class="review-stars">'+'★'.repeat(rating)+'</span><span class="review-verified"><i>✓</i> REVIEW VERIFIED</span></div></div><small>'+esc(r.type)+'</small><p>'+esc(r.text)+'</p>'+del+'</article>';
     }).join('');
   }
@@ -498,10 +498,17 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
   stars.forEach(function(b){b.addEventListener('click',function(){selected=Number(b.getAttribute('data-rating'))||5;paint();});});
   if(form)form.addEventListener('submit',submitReview);
 
-  // Event delegation keeps DELETE working after reviews are re-rendered.
-  if(recent) recent.addEventListener('click',function(e){
+  // Global handler is also attached directly in each generated DELETE button.
+  // This avoids lost event listeners after review cards are re-rendered.
+  window.deleteReviewById=function(id,button){
+    deleteReview(id,button);
+    return false;
+  };
+
+  // Backup delegation.
+  document.addEventListener('click',function(e){
     var btn=e.target && e.target.closest ? e.target.closest('.delete-review') : null;
-    if(!btn || !recent.contains(btn)) return;
+    if(!btn) return;
     e.preventDefault();
     e.stopPropagation();
     deleteReview(btn.getAttribute('data-id'),btn);
