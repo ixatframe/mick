@@ -375,7 +375,7 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
     if (!latest.length) { recent.innerHTML=''; return; }
     recent.innerHTML='<div class="recent-title">LATEST REVIEWS</div>'+latest.map(function(r){
       var rating=Math.max(1,Math.min(5,Number(r.rating)||5));
-      var del=isAdmin() && r.id != null ? '<button type="button" class="delete-review" data-id="'+esc(r.id)+'" title="Delete review" onclick="return window.deleteReviewById(this.dataset.id,this)">DELETE</button>' : '';
+      var del=isAdmin() && r.id != null ? '<button type="button" class="delete-review" data-id="'+esc(r.id)+'" title="Delete review">DELETE</button>' : '';
       return '<article class="review-item"><div class="review-item-top"><b>'+esc(r.name)+'</b><div class="review-rating"><span class="review-stars">'+'★'.repeat(rating)+'</span><span class="review-verified"><i>✓</i> REVIEW VERIFIED</span></div></div><small>'+esc(r.type)+'</small><p>'+esc(r.text)+'</p>'+del+'</article>';
     }).join('');
   }
@@ -475,31 +475,30 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
     if(button){ button.disabled=true; button.textContent='DELETING...'; }
 
     try {
-      // Delete the exact database row by its primary key.
+      // Delete the exact database row. Do not require a returned row because
+      // Supabase can return 204/minimal even after a successful DELETE.
       var url=SUPABASE_URL+'/rest/v1/'+TABLE+'?id=eq.'+encodeURIComponent(String(id));
       var res=await fetch(url,{
         method:'DELETE',
         cache:'no-store',
         headers:headers({
-          'Prefer':'return=representation',
+          'Prefer':'return=minimal',
           'Accept':'application/json'
         },true)
       });
 
       var raw=await res.text();
-      var deleted=[];
-      try { deleted=raw ? JSON.parse(raw) : []; } catch(parseError) {}
-
       if(!res.ok) throw new Error(raw||('HTTP '+res.status));
 
-      // Supabase can return HTTP 204 even when RLS filters out the row.
-      // Never remove the card locally unless Supabase confirms the deleted ID.
-      if(!Array.isArray(deleted) || !deleted.some(function(row){ return String(row.id)===String(id); })) {
-        throw new Error('Supabase did not confirm deletion of review ID '+id+'. The review was not removed from the database.');
+      // Always reload from Supabase and verify the actual database state.
+      await loadReviews();
+      var stillExists=reviews.some(function(row){ return String(row.id)===String(id); });
+
+      if(stillExists){
+        throw new Error('Supabase still contains review ID '+id+'. Delete permission or RLS policy blocked the operation.');
       }
 
-      // Reload directly from Supabase so every browser shows the real database state.
-      await loadReviews();
+      // The row is gone from Supabase. The page was already refreshed above.
     } catch(err){
       var msg=(err&&err.message?err.message:'Unknown error');
       alert('Could not delete review: '+msg);
@@ -514,14 +513,7 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
   stars.forEach(function(b){b.addEventListener('click',function(){selected=Number(b.getAttribute('data-rating'))||5;paint();});});
   if(form)form.addEventListener('submit',submitReview);
 
-  // Global handler is also attached directly in each generated DELETE button.
-  // This avoids lost event listeners after review cards are re-rendered.
-  window.deleteReviewById=function(id,button){
-    deleteReview(id,button);
-    return false;
-  };
-
-  // Backup delegation.
+  // Event delegation keeps DELETE buttons working after review cards are re-rendered.
   document.addEventListener('click',function(e){
     var btn=e.target && e.target.closest ? e.target.closest('.delete-review') : null;
     if(!btn) return;
