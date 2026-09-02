@@ -39,7 +39,7 @@
 
   <section id="profile" class="profile">
     <aside class="profile-card">
-      <div class="avatar"><img src="https://xatimg.com/image/dbQqRyJi59ED.png" alt="Mick profile photo"><i class="verified-badge" aria-label="Verified">✓</i><div class="avatar-ring"></div></div>
+      <div class="avatar"><img src="https://xatimg.com/image/iN1sVOnkIwGq.png" alt="Mick profile photo"><i class="verified-badge" aria-label="Verified">✓</i><div class="avatar-ring"></div></div>
       <h1>Mick</h1>
       <p>@1984</p>
       <div class="classic-actions">
@@ -64,6 +64,7 @@
         </div>
         <p><span id="ratingCount">0</span> VERIFIED REVIEWS</p>
         <button class="leave-review-btn" id="openReview">LEAVE A REVIEW</button>
+        <button class="admin-reviews-btn" id="openAdmin" type="button">ADMIN REVIEWS</button>
         <div class="recent-reviews" id="recentReviews" aria-live="polite"></div>
       </section>
 
@@ -88,6 +89,24 @@
             <textarea id="reviewText" maxlength="120" placeholder="Short feedback about the trade" required></textarea>
             <button type="submit" class="submit-review">POST REVIEW</button>
           </form>
+        </div>
+      </div>
+
+      <div class="review-modal admin-modal" id="adminModal" aria-hidden="true">
+        <div class="review-dialog admin-dialog">
+          <button class="review-close" id="closeAdmin" aria-label="Close">×</button>
+          <small>OWNER ACCESS</small>
+          <h3>Manage reviews</h3>
+          <div id="adminStatus" role="status" style="min-height:18px;margin:0 0 10px;font-size:12px;font-weight:700;"></div>
+          <form id="adminLoginForm">
+            <input id="adminEmail" type="email" autocomplete="email" placeholder="Admin email" required>
+            <input id="adminPassword" type="password" autocomplete="current-password" placeholder="Password" required>
+            <button type="submit" class="submit-review">LOGIN</button>
+          </form>
+          <div id="adminPanel" hidden>
+            <p class="admin-note">Delete buttons are visible only in this admin session.</p>
+            <button type="button" class="admin-logout" id="adminLogout">LOG OUT</button>
+          </div>
         </div>
       </div>
     </aside>
@@ -288,7 +307,7 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
 </script>
 
 <script>
-// Trading reviews stored in Supabase.
+// Trading reviews + owner-only administration via Supabase Auth.
 (function () {
   'use strict';
 
@@ -296,6 +315,7 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
   var SUPABASE_KEY = 'sb_publishable_cfRaH4RXHjdQvDwH_NqlXw_u4oZ5vBA';
   var TABLE = 'reviews';
   var SUBMITTED_KEY = 'mick1984-review-submitted';
+  var ADMIN_SESSION_KEY = 'mick1984-admin-session';
   var BASE_REVIEWS = 94;
   var BASE_RATING_TOTAL = BASE_REVIEWS * 5;
 
@@ -311,186 +331,143 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
   var reviews = [];
   var statusEl = document.getElementById('reviewStatus');
 
-  function setStatus(message, ok) {
-    if (!statusEl) return;
-    statusEl.textContent = message || '';
-    statusEl.style.color = ok === false ? '#d9534f' : '#2f8f5b';
+  var adminModal = document.getElementById('adminModal');
+  var openAdmin = document.getElementById('openAdmin');
+  var closeAdmin = document.getElementById('closeAdmin');
+  var adminForm = document.getElementById('adminLoginForm');
+  var adminPanel = document.getElementById('adminPanel');
+  var adminStatus = document.getElementById('adminStatus');
+  var adminLogout = document.getElementById('adminLogout');
+
+  function setStatus(message, ok, el) {
+    el = el || statusEl;
+    if (!el) return;
+    el.textContent = message || '';
+    el.style.color = ok === false ? '#d9534f' : '#2f8f5b';
   }
 
-  // Storage can be blocked inside embedded forum/iframe pages.
-  function hasSubmitted() {
-    try { return localStorage.getItem(SUBMITTED_KEY) === '1'; } catch (e) { return false; }
-  }
-  function markSubmitted() {
-    try { localStorage.setItem(SUBMITTED_KEY, '1'); } catch (e) {}
-  }
+  function hasSubmitted() { try { return localStorage.getItem(SUBMITTED_KEY) === '1'; } catch (e) { return false; } }
+  function markSubmitted() { try { localStorage.setItem(SUBMITTED_KEY, '1'); } catch (e) {} }
+  function getAdminSession() { try { var x = sessionStorage.getItem(ADMIN_SESSION_KEY); return x ? JSON.parse(x) : null; } catch (e) { return null; } }
+  function saveAdminSession(x) { try { sessionStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(x)); } catch (e) {} }
+  function clearAdminSession() { try { sessionStorage.removeItem(ADMIN_SESSION_KEY); } catch (e) {} }
+  function isAdmin() { var s = getAdminSession(); return !!(s && s.access_token); }
 
-  function headers(extra) {
-    var h = {
-      'apikey': SUPABASE_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_KEY
-    };
+  function headers(extra, admin) {
+    var token = admin && getAdminSession() ? getAdminSession().access_token : SUPABASE_KEY;
+    var h = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + token };
     if (extra) Object.keys(extra).forEach(function (k) { h[k] = extra[k]; });
     return h;
   }
 
-  function esc(v) {
-    return String(v == null ? '' : v).replace(/[&<>\'"]/g, function (c) {
-      return {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c];
-    });
-  }
-
-  function normalize(r) {
-    return {
-      name: r.name || r.reviewer_name || 'Trader',
-      type: r.trade_type || r.type || 'Trade',
-      text: r.comment || r.review || r.text || r.feedback || '',
-      rating: Number(r.rating) || 5,
-      date: r.created_at || r.date || ''
-    };
-  }
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>\'"]/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]; }); }
+  function normalize(r) { return { id:r.id, name:r.reviewer_name || 'Trader', type:r.trade_type || 'Trade', text:r.comment || '', rating:Number(r.rating)||5, date:r.created_at || '' }; }
 
   function updateButton() {
     if (!open) return;
-    if (hasSubmitted()) {
-      open.textContent = 'REVIEW ALREADY SUBMITTED';
-      open.disabled = true;
-      open.classList.add('review-done');
-    } else {
-      open.textContent = 'LEAVE A REVIEW';
-      open.disabled = false;
-      open.classList.remove('review-done');
-    }
+    if (hasSubmitted()) { open.textContent='REVIEW ALREADY SUBMITTED'; open.disabled=true; open.classList.add('review-done'); }
+    else { open.textContent='LEAVE A REVIEW'; open.disabled=false; open.classList.remove('review-done'); }
   }
 
   function renderRecent(list) {
     if (!recent) return;
-    var latest = list.slice(0, 3);
-    if (!latest.length) { recent.innerHTML = ''; return; }
-    recent.innerHTML = '<div class="recent-title">LATEST REVIEWS</div>' + latest.map(function (r) {
-      var rating = Math.max(1, Math.min(5, Number(r.rating) || 5));
-      return '<article class="review-item"><div class="review-item-top"><b>' + esc(r.name) + '</b><span>' + '★'.repeat(rating) + '</span></div><small>' + esc(r.type) + '</small><p>' + esc(r.text) + '</p></article>';
+    var latest = list.slice(0,3);
+    if (!latest.length) { recent.innerHTML=''; return; }
+    recent.innerHTML='<div class="recent-title">LATEST REVIEWS</div>'+latest.map(function(r){
+      var rating=Math.max(1,Math.min(5,Number(r.rating)||5));
+      var del=isAdmin() && r.id != null ? '<button class="delete-review" data-id="'+esc(r.id)+'" title="Delete review">DELETE</button>' : '';
+      return '<article class="review-item"><div class="review-item-top"><b>'+esc(r.name)+'</b><span>'+'★'.repeat(rating)+'</span></div><small>'+esc(r.type)+'</small><p>'+esc(r.text)+'</p>'+del+'</article>';
     }).join('');
+    Array.prototype.forEach.call(recent.querySelectorAll('.delete-review'), function(btn){
+      btn.addEventListener('click', function(){ deleteReview(btn.getAttribute('data-id')); });
+    });
   }
 
   function render() {
-    var userTotal = reviews.reduce(function (a, r) { return a + (Number(r.rating) || 0); }, 0);
-    var totalCount = BASE_REVIEWS + reviews.length;
-    var value = (BASE_RATING_TOTAL + userTotal) / totalCount;
-    if (count) count.textContent = totalCount;
-    if (avg) avg.textContent = value.toFixed(1);
-    renderRecent(reviews);
-    updateButton();
+    var userTotal=reviews.reduce(function(a,r){return a+(Number(r.rating)||0);},0);
+    var totalCount=BASE_REVIEWS+reviews.length;
+    var value=(BASE_RATING_TOTAL+userTotal)/totalCount;
+    if(count) count.textContent=totalCount;
+    if(avg) avg.textContent=value.toFixed(1);
+    renderRecent(reviews); updateButton(); updateAdminUI();
   }
 
   async function loadReviews() {
     try {
-      var url = SUPABASE_URL + '/rest/v1/' + TABLE + '?select=*&order=created_at.desc';
-      var response = await fetch(url, { headers: headers() });
-      if (!response.ok) throw new Error('Unable to load reviews');
-      var data = await response.json();
-      reviews = Array.isArray(data) ? data.map(normalize) : [];
-    } catch (error) {
-      console.warn('Reviews:', error.message);
-      reviews = [];
-    }
+      var response=await fetch(SUPABASE_URL+'/rest/v1/'+TABLE+'?select=*&order=created_at.desc',{headers:headers()});
+      if(!response.ok) throw new Error('Unable to load reviews');
+      var data=await response.json(); reviews=Array.isArray(data)?data.map(normalize):[];
+    } catch(error) { console.warn('Reviews:',error.message); reviews=[]; }
     render();
   }
 
-  function paint() {
-    stars.forEach(function (b, i) { b.classList.toggle('active', i < selected); });
-  }
-
-  function closeModal() {
-    if (!modal) return;
-    modal.classList.remove('show');
-    modal.setAttribute('aria-hidden', 'true');
-  }
+  function paint(){ stars.forEach(function(b,i){b.classList.toggle('active',i<selected);}); }
+  function closeModal(){ if(modal){modal.classList.remove('show');modal.setAttribute('aria-hidden','true');} }
+  function closeAdminModal(){ if(adminModal){adminModal.classList.remove('show');adminModal.setAttribute('aria-hidden','true');} }
 
   async function submitReview(e) {
-    if (e) e.preventDefault();
-    if (hasSubmitted()) { closeModal(); return false; }
-
-    var nameEl = document.getElementById('reviewName');
-    var typeEl = document.getElementById('reviewType');
-    var textEl = document.getElementById('reviewText');
-    var submitBtn = form ? form.querySelector('.submit-review') : null;
-    var name = nameEl ? nameEl.value.trim() : '';
-    var text = textEl ? textEl.value.trim() : '';
-
-    if (!name) { setStatus('Enter your xat name.', false); if (nameEl) nameEl.focus(); return false; }
-    if (!text) { setStatus('Write a short feedback.', false); if (textEl) textEl.focus(); return false; }
-
-    setStatus('Posting review...', true);
-    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'POSTING...'; }
-
+    if(e)e.preventDefault(); if(hasSubmitted()){closeModal();return false;}
+    var nameEl=document.getElementById('reviewName'), typeEl=document.getElementById('reviewType'), textEl=document.getElementById('reviewText');
+    var submitBtn=form?form.querySelector('.submit-review'):null;
+    var name=nameEl?nameEl.value.trim():'', text=textEl?textEl.value.trim():'';
+    if(!name){setStatus('Enter your xat name.',false);nameEl&&nameEl.focus();return false;}
+    if(!text){setStatus('Write a short feedback.',false);textEl&&textEl.focus();return false;}
+    setStatus('Posting review...',true); if(submitBtn){submitBtn.disabled=true;submitBtn.textContent='POSTING...';}
     try {
-      // Prevent the same xat name from being submitted twice when existing rows are readable.
-      var checkUrl = SUPABASE_URL + '/rest/v1/' + TABLE + '?select=id&reviewer_name=ilike.' + encodeURIComponent(name) + '&limit=1';
-      var check = await fetch(checkUrl, { headers: headers() });
-      if (check.ok) {
-        var existing = await check.json();
-        if (Array.isArray(existing) && existing.length) {
-          setStatus('A review from this xat name already exists.', false);
-          return false;
-        }
-      }
-
-      // Use the columns that exist in the current Supabase table.
-      // Do not send name/review because PostgREST reports those columns as unavailable.
-      var payload = {
-        reviewer_name: name,
-        trade_type: typeEl ? typeEl.value : 'Trade',
-        rating: selected,
-        comment: text
-      };
-
-      var response = await fetch(SUPABASE_URL + '/rest/v1/' + TABLE, {
-        method: 'POST',
-        headers: headers({
-          'Content-Type': 'application/json',
-          'Prefer': 'return=representation'
-        }),
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) {
-        var message = await response.text();
-        throw new Error(message || 'Could not save review');
-      }
-
-      var created = await response.json();
-      if (Array.isArray(created) && created[0]) reviews.unshift(normalize(created[0]));
-      else reviews.unshift(normalize(payload));
-
-      markSubmitted();
-      if (form) form.reset();
-      selected = 5;
-      paint();
-      render();
-      setStatus('Review posted successfully!', true);
-      setTimeout(closeModal, 700);
-    } catch (error) {
-      console.error(error);
-      setStatus('Could not save: ' + (error && error.message ? error.message.slice(0, 120) : 'Unknown error'), false);
-    } finally {
-      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'POST REVIEW'; }
-    }
+      var checkUrl=SUPABASE_URL+'/rest/v1/'+TABLE+'?select=id&reviewer_name=ilike.'+encodeURIComponent(name)+'&limit=1';
+      var check=await fetch(checkUrl,{headers:headers()});
+      if(check.ok){var existing=await check.json();if(Array.isArray(existing)&&existing.length){setStatus('A review from this xat name already exists.',false);return false;}}
+      var payload={reviewer_name:name,trade_type:typeEl?typeEl.value:'Trade',rating:selected,comment:text};
+      var response=await fetch(SUPABASE_URL+'/rest/v1/'+TABLE,{method:'POST',headers:headers({'Content-Type':'application/json','Prefer':'return=representation'}),body:JSON.stringify(payload)});
+      if(!response.ok) throw new Error((await response.text())||'Could not save review');
+      var created=await response.json(); reviews.unshift(Array.isArray(created)&&created[0]?normalize(created[0]):normalize(payload));
+      markSubmitted(); if(form)form.reset(); selected=5;paint();render();setStatus('Review posted successfully!',true);setTimeout(closeModal,700);
+    } catch(error) { console.error(error);setStatus('Could not save: '+(error&&error.message?error.message.slice(0,120):'Unknown error'),false); }
+    finally { if(submitBtn){submitBtn.disabled=false;submitBtn.textContent='POST REVIEW';} }
     return false;
   }
 
-  if (open) open.addEventListener('click', function () {
-    if (hasSubmitted()) return;
-    setStatus('', true);
-    if (modal) { modal.classList.add('show'); modal.setAttribute('aria-hidden', 'false'); }
-  });
-  if (close) close.addEventListener('click', closeModal);
-  if (modal) modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
-  stars.forEach(function (b) { b.addEventListener('click', function () { selected = Number(b.getAttribute('data-rating')) || 5; paint(); }); });
-  if (form) form.addEventListener('submit', submitReview);
+  async function loginAdmin(e) {
+    if(e)e.preventDefault();
+    var email=document.getElementById('adminEmail').value.trim();
+    var password=document.getElementById('adminPassword').value;
+    if(!email||!password){setStatus('Enter email and password.',false,adminStatus);return;}
+    setStatus('Signing in...',true,adminStatus);
+    try {
+      var res=await fetch(SUPABASE_URL+'/auth/v1/token?grant_type=password',{method:'POST',headers:{'apikey':SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify({email:email,password:password})});
+      var data=await res.json(); if(!res.ok||!data.access_token) throw new Error(data.error_description||data.msg||'Login failed');
+      saveAdminSession(data); setStatus('Admin access enabled.',true,adminStatus); render();
+    } catch(err){setStatus('Login failed: '+err.message,false,adminStatus);}
+  }
 
-  paint();
-  loadReviews();
+  function updateAdminUI(){
+    if(!adminForm||!adminPanel)return;
+    adminForm.hidden=isAdmin(); adminPanel.hidden=!isAdmin();
+  }
+
+  async function deleteReview(id) {
+    if(!isAdmin()){setStatus('Admin login required.',false,adminStatus);return;}
+    if(!confirm('Delete this review permanently?'))return;
+    try {
+      var res=await fetch(SUPABASE_URL+'/rest/v1/'+TABLE+'?id=eq.'+encodeURIComponent(id),{method:'DELETE',headers:headers({'Prefer':'return=representation'},true)});
+      if(!res.ok) throw new Error(await res.text());
+      reviews=reviews.filter(function(r){return String(r.id)!==String(id);}); render();
+    } catch(err){ alert('Could not delete review. Check the Supabase DELETE policy.'); console.error(err); }
+  }
+
+  if(open)open.addEventListener('click',function(){if(hasSubmitted())return;setStatus('',true);if(modal){modal.classList.add('show');modal.setAttribute('aria-hidden','false');}});
+  if(close)close.addEventListener('click',closeModal);
+  if(modal)modal.addEventListener('click',function(e){if(e.target===modal)closeModal();});
+  stars.forEach(function(b){b.addEventListener('click',function(){selected=Number(b.getAttribute('data-rating'))||5;paint();});});
+  if(form)form.addEventListener('submit',submitReview);
+
+  if(openAdmin)openAdmin.addEventListener('click',function(){setStatus('',true,adminStatus);if(adminModal){adminModal.classList.add('show');adminModal.setAttribute('aria-hidden','false');updateAdminUI();}});
+  if(closeAdmin)closeAdmin.addEventListener('click',closeAdminModal);
+  if(adminModal)adminModal.addEventListener('click',function(e){if(e.target===adminModal)closeAdminModal();});
+  if(adminForm)adminForm.addEventListener('submit',loginAdmin);
+  if(adminLogout)adminLogout.addEventListener('click',function(){clearAdminSession();setStatus('Logged out.',true,adminStatus);render();});
+
+  paint(); loadReviews();
 })();
 </script>
 
