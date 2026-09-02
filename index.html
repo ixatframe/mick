@@ -287,36 +287,53 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
 </script>
 
 <script>
-// Trading reviews stored locally in the visitor's browser.
+// Trading reviews stored in Supabase.
 (function () {
-  var KEY = 'mick1984-trade-reviews';
+  'use strict';
+
+  var SUPABASE_URL = 'https://odadikcmkeeoljfoysmz.supabase.co';
+  var SUPABASE_KEY = 'sb_publishable_cfRaH4RXHjdQvDwH_NqlXw_u4oZ5vBA';
+  var TABLE = 'reviews';
   var SUBMITTED_KEY = 'mick1984-review-submitted';
   var BASE_REVIEWS = 94;
   var BASE_RATING_TOTAL = BASE_REVIEWS * 5;
+
   var modal = document.getElementById('reviewModal');
   var open = document.getElementById('openReview');
   var close = document.getElementById('closeReview');
   var form = document.getElementById('reviewForm');
-  var submitBtn = form ? form.querySelector('.submit-review') : null;
   var stars = Array.prototype.slice.call(document.querySelectorAll('#starPicker button'));
   var avg = document.getElementById('ratingAverage');
   var count = document.getElementById('ratingCount');
   var recent = document.getElementById('recentReviews');
   var selected = 5;
+  var reviews = [];
 
-  function getReviews() {
-    try { return JSON.parse(localStorage.getItem(KEY) || '[]'); }
-    catch (e) { return []; }
+  function headers(extra) {
+    var h = {
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_KEY
+    };
+    if (extra) Object.keys(extra).forEach(function (k) { h[k] = extra[k]; });
+    return h;
   }
-  function saveReviews(list) {
-    try { localStorage.setItem(KEY, JSON.stringify(list)); return true; }
-    catch (e) { alert('Your browser blocked local storage. Please allow site storage and try again.'); return false; }
-  }
+
   function esc(v) {
-    return String(v).replace(/[&<>\'"]/g, function (c) {
+    return String(v == null ? '' : v).replace(/[&<>\'"]/g, function (c) {
       return {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c];
     });
   }
+
+  function normalize(r) {
+    return {
+      name: r.name || r.reviewer_name || 'Trader',
+      type: r.trade_type || r.type || 'Trade',
+      text: r.review || r.text || r.feedback || '',
+      rating: Number(r.rating) || 5,
+      date: r.created_at || r.date || ''
+    };
+  }
+
   function updateButton() {
     if (!open) return;
     if (localStorage.getItem(SUBMITTED_KEY)) {
@@ -329,62 +346,117 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
       open.classList.remove('review-done');
     }
   }
+
   function renderRecent(list) {
     if (!recent) return;
-    var latest = list.slice(-3).reverse();
+    var latest = list.slice(0, 3);
     if (!latest.length) { recent.innerHTML = ''; return; }
     recent.innerHTML = '<div class="recent-title">LATEST REVIEWS</div>' + latest.map(function (r) {
-      var rating = Number(r.rating) || 5;
-      return '<article class="review-item"><div class="review-item-top"><b>' + esc(r.name || 'Trader') + '</b><span>' + '★'.repeat(rating) + '</span></div><small>' + esc(r.type || 'Trade') + '</small><p>' + esc(r.text || '') + '</p></article>';
+      var rating = Math.max(1, Math.min(5, Number(r.rating) || 5));
+      return '<article class="review-item"><div class="review-item-top"><b>' + esc(r.name) + '</b><span>' + '★'.repeat(rating) + '</span></div><small>' + esc(r.type) + '</small><p>' + esc(r.text) + '</p></article>';
     }).join('');
   }
-  function update() {
-    var list = getReviews();
-    var userTotal = list.reduce(function (a, r) { return a + (Number(r.rating) || 0); }, 0);
-    var totalCount = BASE_REVIEWS + list.length;
+
+  function render() {
+    var userTotal = reviews.reduce(function (a, r) { return a + (Number(r.rating) || 0); }, 0);
+    var totalCount = BASE_REVIEWS + reviews.length;
     var value = (BASE_RATING_TOTAL + userTotal) / totalCount;
     if (count) count.textContent = totalCount;
     if (avg) avg.textContent = value.toFixed(1);
-    renderRecent(list);
+    renderRecent(reviews);
     updateButton();
   }
+
+  async function loadReviews() {
+    try {
+      var url = SUPABASE_URL + '/rest/v1/' + TABLE + '?select=*&order=created_at.desc';
+      var response = await fetch(url, { headers: headers() });
+      if (!response.ok) throw new Error('Unable to load reviews');
+      var data = await response.json();
+      reviews = Array.isArray(data) ? data.map(normalize) : [];
+    } catch (error) {
+      console.warn('Reviews:', error.message);
+      reviews = [];
+    }
+    render();
+  }
+
   function paint() {
     stars.forEach(function (b, i) { b.classList.toggle('active', i < selected); });
   }
+
   function closeModal() {
     if (!modal) return;
     modal.classList.remove('show');
     modal.setAttribute('aria-hidden', 'true');
   }
-  function submitReview(e) {
+
+  async function submitReview(e) {
     if (e) e.preventDefault();
     if (localStorage.getItem(SUBMITTED_KEY)) { closeModal(); return false; }
+
     var nameEl = document.getElementById('reviewName');
     var typeEl = document.getElementById('reviewType');
     var textEl = document.getElementById('reviewText');
+    var submitBtn = form ? form.querySelector('.submit-review') : null;
     var name = nameEl ? nameEl.value.trim() : '';
     var text = textEl ? textEl.value.trim() : '';
+
     if (!name) { alert('Please enter your xat name.'); if (nameEl) nameEl.focus(); return false; }
     if (!text) { alert('Please write a short feedback.'); if (textEl) textEl.focus(); return false; }
-    var list = getReviews();
-    if (list.some(function (r) { return String(r.name || '').toLowerCase() === name.toLowerCase(); })) {
-      alert('A review from this name already exists on this browser.'); return false;
+
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'POSTING...'; }
+
+    try {
+      // Prevent the same xat name from being submitted twice when existing rows are readable.
+      var checkUrl = SUPABASE_URL + '/rest/v1/' + TABLE + '?select=id&name=ilike.' + encodeURIComponent(name) + '&limit=1';
+      var check = await fetch(checkUrl, { headers: headers() });
+      if (check.ok) {
+        var existing = await check.json();
+        if (Array.isArray(existing) && existing.length) {
+          alert('A review from this xat name already exists.');
+          return false;
+        }
+      }
+
+      var payload = {
+        name: name,
+        trade_type: typeEl ? typeEl.value : 'Trade',
+        rating: selected,
+        review: text
+      };
+
+      var response = await fetch(SUPABASE_URL + '/rest/v1/' + TABLE, {
+        method: 'POST',
+        headers: headers({
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        }),
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        var message = await response.text();
+        throw new Error(message || 'Could not save review');
+      }
+
+      var created = await response.json();
+      if (Array.isArray(created) && created[0]) reviews.unshift(normalize(created[0]));
+      else reviews.unshift(normalize(payload));
+
+      try { localStorage.setItem(SUBMITTED_KEY, '1'); } catch (err) {}
+      if (form) form.reset();
+      selected = 5;
+      paint();
+      render();
+      closeModal();
+      alert('Review posted successfully. Thank you!');
+    } catch (error) {
+      console.error(error);
+      alert('Review could not be saved. Please try again.');
+    } finally {
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'POST REVIEW'; }
     }
-    list.push({
-      name: name,
-      type: typeEl ? typeEl.value : 'Trade',
-      text: text,
-      rating: selected,
-      date: new Date().toISOString()
-    });
-    if (!saveReviews(list)) return false;
-    try { localStorage.setItem(SUBMITTED_KEY, '1'); } catch (err) {}
-    if (form) form.reset();
-    selected = 5;
-    paint();
-    update();
-    closeModal();
-    setTimeout(function () { alert('Review posted successfully. Thank you!'); }, 80);
     return false;
   }
 
@@ -396,9 +468,9 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
   if (modal) modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
   stars.forEach(function (b) { b.addEventListener('click', function () { selected = Number(b.getAttribute('data-rating')) || 5; paint(); }); });
   if (form) form.addEventListener('submit', submitReview);
-  if (submitBtn) submitBtn.addEventListener('click', function (e) { submitReview(e); });
+
   paint();
-  update();
+  loadReviews();
 })();
 </script>
 

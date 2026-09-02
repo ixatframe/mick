@@ -1,0 +1,4 @@
+-- Run only if your existing reviews table uses different columns.
+-- The website expects: name, trade_type, rating, review, created_at.
+-- Optional global protection against duplicate names:
+-- create unique index if not exists reviews_name_unique_ci on public.reviews (lower(name));
