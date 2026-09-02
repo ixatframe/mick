@@ -72,6 +72,7 @@
           <button class="review-close" id="closeReview" aria-label="Close">×</button>
           <small>TRADING FEEDBACK</small>
           <h3>Rate your trade</h3>
+          <div id="reviewStatus" role="status" style="min-height:18px;margin:0 0 10px;font-size:12px;font-weight:700;"></div>
           <form id="reviewForm">
             <input id="reviewName" maxlength="24" placeholder="Your xat name" required>
             <select id="reviewType" required>
@@ -308,6 +309,21 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
   var recent = document.getElementById('recentReviews');
   var selected = 5;
   var reviews = [];
+  var statusEl = document.getElementById('reviewStatus');
+
+  function setStatus(message, ok) {
+    if (!statusEl) return;
+    statusEl.textContent = message || '';
+    statusEl.style.color = ok === false ? '#d9534f' : '#2f8f5b';
+  }
+
+  // Storage can be blocked inside embedded forum/iframe pages.
+  function hasSubmitted() {
+    try { return localStorage.getItem(SUBMITTED_KEY) === '1'; } catch (e) { return false; }
+  }
+  function markSubmitted() {
+    try { localStorage.setItem(SUBMITTED_KEY, '1'); } catch (e) {}
+  }
 
   function headers(extra) {
     var h = {
@@ -336,7 +352,7 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
 
   function updateButton() {
     if (!open) return;
-    if (localStorage.getItem(SUBMITTED_KEY)) {
+    if (hasSubmitted()) {
       open.textContent = 'REVIEW ALREADY SUBMITTED';
       open.disabled = true;
       open.classList.add('review-done');
@@ -393,7 +409,7 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
 
   async function submitReview(e) {
     if (e) e.preventDefault();
-    if (localStorage.getItem(SUBMITTED_KEY)) { closeModal(); return false; }
+    if (hasSubmitted()) { closeModal(); return false; }
 
     var nameEl = document.getElementById('reviewName');
     var typeEl = document.getElementById('reviewType');
@@ -402,9 +418,10 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
     var name = nameEl ? nameEl.value.trim() : '';
     var text = textEl ? textEl.value.trim() : '';
 
-    if (!name) { alert('Please enter your xat name.'); if (nameEl) nameEl.focus(); return false; }
-    if (!text) { alert('Please write a short feedback.'); if (textEl) textEl.focus(); return false; }
+    if (!name) { setStatus('Enter your xat name.', false); if (nameEl) nameEl.focus(); return false; }
+    if (!text) { setStatus('Write a short feedback.', false); if (textEl) textEl.focus(); return false; }
 
+    setStatus('Posting review...', true);
     if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'POSTING...'; }
 
     try {
@@ -414,7 +431,7 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
       if (check.ok) {
         var existing = await check.json();
         if (Array.isArray(existing) && existing.length) {
-          alert('A review from this xat name already exists.');
+          setStatus('A review from this xat name already exists.', false);
           return false;
         }
       }
@@ -444,16 +461,16 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
       if (Array.isArray(created) && created[0]) reviews.unshift(normalize(created[0]));
       else reviews.unshift(normalize(payload));
 
-      try { localStorage.setItem(SUBMITTED_KEY, '1'); } catch (err) {}
+      markSubmitted();
       if (form) form.reset();
       selected = 5;
       paint();
       render();
-      closeModal();
-      alert('Review posted successfully. Thank you!');
+      setStatus('Review posted successfully!', true);
+      setTimeout(closeModal, 700);
     } catch (error) {
       console.error(error);
-      alert('Review could not be saved. Please try again.');
+      setStatus('Could not save: ' + (error && error.message ? error.message.slice(0, 120) : 'Unknown error'), false);
     } finally {
       if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'POST REVIEW'; }
     }
@@ -461,7 +478,8 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
   }
 
   if (open) open.addEventListener('click', function () {
-    if (localStorage.getItem(SUBMITTED_KEY)) return;
+    if (hasSubmitted()) return;
+    setStatus('', true);
     if (modal) { modal.classList.add('show'); modal.setAttribute('aria-hidden', 'false'); }
   });
   if (close) close.addEventListener('click', closeModal);
