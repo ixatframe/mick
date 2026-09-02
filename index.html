@@ -288,26 +288,38 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
 
 <script>
 // Trading reviews stored locally in the visitor's browser.
-(() => {
-  const KEY = 'mick1984-trade-reviews';
-  const SUBMITTED_KEY = 'mick1984-review-submitted';
-  const BASE_REVIEWS = 94;
-  const BASE_RATING_TOTAL = BASE_REVIEWS * 5;
-  const modal = document.getElementById('reviewModal');
-  const open = document.getElementById('openReview');
-  const close = document.getElementById('closeReview');
-  const form = document.getElementById('reviewForm');
-  const stars = [...document.querySelectorAll('#starPicker button')];
-  const avg = document.getElementById('ratingAverage');
-  const count = document.getElementById('ratingCount');
-  const recent = document.getElementById('recentReviews');
-  let selected = 5;
+(function () {
+  var KEY = 'mick1984-trade-reviews';
+  var SUBMITTED_KEY = 'mick1984-review-submitted';
+  var BASE_REVIEWS = 94;
+  var BASE_RATING_TOTAL = BASE_REVIEWS * 5;
+  var modal = document.getElementById('reviewModal');
+  var open = document.getElementById('openReview');
+  var close = document.getElementById('closeReview');
+  var form = document.getElementById('reviewForm');
+  var submitBtn = form ? form.querySelector('.submit-review') : null;
+  var stars = Array.prototype.slice.call(document.querySelectorAll('#starPicker button'));
+  var avg = document.getElementById('ratingAverage');
+  var count = document.getElementById('ratingCount');
+  var recent = document.getElementById('recentReviews');
+  var selected = 5;
 
-  function reviews(){ try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch { return []; } }
-  function esc(v){ return String(v).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
-  function updateButton(){
-    if(!open) return;
-    if(localStorage.getItem(SUBMITTED_KEY)){
+  function getReviews() {
+    try { return JSON.parse(localStorage.getItem(KEY) || '[]'); }
+    catch (e) { return []; }
+  }
+  function saveReviews(list) {
+    try { localStorage.setItem(KEY, JSON.stringify(list)); return true; }
+    catch (e) { alert('Your browser blocked local storage. Please allow site storage and try again.'); return false; }
+  }
+  function esc(v) {
+    return String(v).replace(/[&<>\'"]/g, function (c) {
+      return {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c];
+    });
+  }
+  function updateButton() {
+    if (!open) return;
+    if (localStorage.getItem(SUBMITTED_KEY)) {
       open.textContent = 'REVIEW ALREADY SUBMITTED';
       open.disabled = true;
       open.classList.add('review-done');
@@ -317,50 +329,76 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
       open.classList.remove('review-done');
     }
   }
-  function renderRecent(list){
-    if(!recent) return;
-    const latest = list.slice(-3).reverse();
-    if(!latest.length){ recent.innerHTML = ''; return; }
-    recent.innerHTML = '<div class="recent-title">LATEST REVIEWS</div>' + latest.map(r => `
-      <article class="review-item">
-        <div class="review-item-top"><b>${esc(r.name || 'Trader')}</b><span>${'★'.repeat(Number(r.rating)||5)}</span></div>
-        <small>${esc(r.type || 'Trade')}</small>
-        <p>${esc(r.text || '')}</p>
-      </article>`).join('');
+  function renderRecent(list) {
+    if (!recent) return;
+    var latest = list.slice(-3).reverse();
+    if (!latest.length) { recent.innerHTML = ''; return; }
+    recent.innerHTML = '<div class="recent-title">LATEST REVIEWS</div>' + latest.map(function (r) {
+      var rating = Number(r.rating) || 5;
+      return '<article class="review-item"><div class="review-item-top"><b>' + esc(r.name || 'Trader') + '</b><span>' + '★'.repeat(rating) + '</span></div><small>' + esc(r.type || 'Trade') + '</small><p>' + esc(r.text || '') + '</p></article>';
+    }).join('');
   }
-  function update(){
-    const list = reviews();
-    const userTotal = list.reduce((a,r)=>a + Number(r.rating || 0), 0);
-    const totalCount = BASE_REVIEWS + list.length;
-    const value = (BASE_RATING_TOTAL + userTotal) / totalCount;
-    count.textContent = totalCount;
-    avg.textContent = value.toFixed(1);
+  function update() {
+    var list = getReviews();
+    var userTotal = list.reduce(function (a, r) { return a + (Number(r.rating) || 0); }, 0);
+    var totalCount = BASE_REVIEWS + list.length;
+    var value = (BASE_RATING_TOTAL + userTotal) / totalCount;
+    if (count) count.textContent = totalCount;
+    if (avg) avg.textContent = value.toFixed(1);
     renderRecent(list);
     updateButton();
   }
-  function paint(){ stars.forEach((b,i)=>b.classList.toggle('active', i < selected)); }
-  open?.addEventListener('click',()=>{
-    if(localStorage.getItem(SUBMITTED_KEY)) return;
-    modal.classList.add('show'); modal.setAttribute('aria-hidden','false');
-  });
-  close?.addEventListener('click',()=>{ modal.classList.remove('show'); modal.setAttribute('aria-hidden','true'); });
-  modal?.addEventListener('click',e=>{ if(e.target===modal) close.click(); });
-  stars.forEach(b=>b.addEventListener('click',()=>{ selected=Number(b.dataset.rating); paint(); }));
-  form?.addEventListener('submit',e=>{
-    e.preventDefault();
-    if(localStorage.getItem(SUBMITTED_KEY)) return;
-    const list=reviews();
-    const name=document.getElementById('reviewName').value.trim();
-    if(list.some(r => String(r.name||'').toLowerCase() === name.toLowerCase())){
-      alert('A review from this name already exists on this browser.'); return;
+  function paint() {
+    stars.forEach(function (b, i) { b.classList.toggle('active', i < selected); });
+  }
+  function closeModal() {
+    if (!modal) return;
+    modal.classList.remove('show');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+  function submitReview(e) {
+    if (e) e.preventDefault();
+    if (localStorage.getItem(SUBMITTED_KEY)) { closeModal(); return false; }
+    var nameEl = document.getElementById('reviewName');
+    var typeEl = document.getElementById('reviewType');
+    var textEl = document.getElementById('reviewText');
+    var name = nameEl ? nameEl.value.trim() : '';
+    var text = textEl ? textEl.value.trim() : '';
+    if (!name) { alert('Please enter your xat name.'); if (nameEl) nameEl.focus(); return false; }
+    if (!text) { alert('Please write a short feedback.'); if (textEl) textEl.focus(); return false; }
+    var list = getReviews();
+    if (list.some(function (r) { return String(r.name || '').toLowerCase() === name.toLowerCase(); })) {
+      alert('A review from this name already exists on this browser.'); return false;
     }
-    list.push({name, type:document.getElementById('reviewType').value, text:document.getElementById('reviewText').value.trim(), rating:selected, date:new Date().toISOString()});
-    localStorage.setItem(KEY,JSON.stringify(list));
-    localStorage.setItem(SUBMITTED_KEY,'1');
-    form.reset(); selected=5; paint(); update(); close.click();
-    alert('Review saved. Thank you!');
+    list.push({
+      name: name,
+      type: typeEl ? typeEl.value : 'Trade',
+      text: text,
+      rating: selected,
+      date: new Date().toISOString()
+    });
+    if (!saveReviews(list)) return false;
+    try { localStorage.setItem(SUBMITTED_KEY, '1'); } catch (err) {}
+    if (form) form.reset();
+    selected = 5;
+    paint();
+    update();
+    closeModal();
+    setTimeout(function () { alert('Review posted successfully. Thank you!'); }, 80);
+    return false;
+  }
+
+  if (open) open.addEventListener('click', function () {
+    if (localStorage.getItem(SUBMITTED_KEY)) return;
+    if (modal) { modal.classList.add('show'); modal.setAttribute('aria-hidden', 'false'); }
   });
-  paint(); update();
+  if (close) close.addEventListener('click', closeModal);
+  if (modal) modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
+  stars.forEach(function (b) { b.addEventListener('click', function () { selected = Number(b.getAttribute('data-rating')) || 5; paint(); }); });
+  if (form) form.addEventListener('submit', submitReview);
+  if (submitBtn) submitBtn.addEventListener('click', function (e) { submitReview(e); });
+  paint();
+  update();
 })();
 </script>
 
