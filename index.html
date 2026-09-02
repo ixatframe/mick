@@ -471,17 +471,35 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
       if(openAdmin) openAdmin.click();
       return;
     }
+
     if(button){ button.disabled=true; button.textContent='DELETING...'; }
+
     try {
+      // Delete the exact database row by its primary key.
       var url=SUPABASE_URL+'/rest/v1/'+TABLE+'?id=eq.'+encodeURIComponent(String(id));
       var res=await fetch(url,{
         method:'DELETE',
-        headers:headers({'Prefer':'return=representation','Content-Type':'application/json'},true)
+        cache:'no-store',
+        headers:headers({
+          'Prefer':'return=representation',
+          'Accept':'application/json'
+        },true)
       });
+
       var raw=await res.text();
+      var deleted=[];
+      try { deleted=raw ? JSON.parse(raw) : []; } catch(parseError) {}
+
       if(!res.ok) throw new Error(raw||('HTTP '+res.status));
-      reviews=reviews.filter(function(r){return String(r.id)!==String(id);});
-      render();
+
+      // Supabase can return HTTP 204 even when RLS filters out the row.
+      // Never remove the card locally unless Supabase confirms the deleted ID.
+      if(!Array.isArray(deleted) || !deleted.some(function(row){ return String(row.id)===String(id); })) {
+        throw new Error('Supabase did not confirm deletion of review ID '+id+'. The review was not removed from the database.');
+      }
+
+      // Reload directly from Supabase so every browser shows the real database state.
+      await loadReviews();
     } catch(err){
       var msg=(err&&err.message?err.message:'Unknown error');
       alert('Could not delete review: '+msg);
