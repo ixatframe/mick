@@ -375,12 +375,9 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
     if (!latest.length) { recent.innerHTML=''; return; }
     recent.innerHTML='<div class="recent-title">LATEST REVIEWS</div>'+latest.map(function(r){
       var rating=Math.max(1,Math.min(5,Number(r.rating)||5));
-      var del=isAdmin() && r.id != null ? '<button class="delete-review" data-id="'+esc(r.id)+'" title="Delete review">DELETE</button>' : '';
+      var del=isAdmin() && r.id != null ? '<button type="button" class="delete-review" data-id="'+esc(r.id)+'" title="Delete review">DELETE</button>' : '';
       return '<article class="review-item"><div class="review-item-top"><b>'+esc(r.name)+'</b><div class="review-rating"><span class="review-stars">'+'★'.repeat(rating)+'</span><span class="review-verified"><i>✓</i> REVIEW VERIFIED</span></div></div><small>'+esc(r.type)+'</small><p>'+esc(r.text)+'</p>'+del+'</article>';
     }).join('');
-    Array.prototype.forEach.call(recent.querySelectorAll('.delete-review'), function(btn){
-      btn.addEventListener('click', function(){ deleteReview(btn.getAttribute('data-id')); });
-    });
   }
 
   function render() {
@@ -467,15 +464,32 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
     adminForm.hidden=isAdmin(); adminPanel.hidden=!isAdmin();
   }
 
-  async function deleteReview(id) {
-    if(!isAdmin()){setStatus('Admin login required.',false,adminStatus);return;}
-    if(!confirm('Delete this review permanently?'))return;
+  async function deleteReview(id, button) {
+    if(!id){ alert('Review ID is missing.'); return; }
+    if(!isAdmin()){
+      alert('Admin session expired. Please log in again.');
+      if(openAdmin) openAdmin.click();
+      return;
+    }
+    if(!confirm('Delete this review permanently?')) return;
+    if(button){ button.disabled=true; button.textContent='DELETING...'; }
     try {
-      var res=await fetch(SUPABASE_URL+'/rest/v1/'+TABLE+'?id=eq.'+encodeURIComponent(id),{method:'DELETE',headers:headers({'Prefer':'return=representation'},true)});
-      if(!res.ok) throw new Error(await res.text());
-      reviews=reviews.filter(function(r){return String(r.id)!==String(id);}); render();
+      var url=SUPABASE_URL+'/rest/v1/'+TABLE+'?id=eq.'+encodeURIComponent(String(id));
+      var res=await fetch(url,{
+        method:'DELETE',
+        headers:headers({'Prefer':'return=representation','Content-Type':'application/json'},true)
+      });
+      var raw=await res.text();
+      if(!res.ok) throw new Error(raw||('HTTP '+res.status));
+      reviews=reviews.filter(function(r){return String(r.id)!==String(id);});
+      render();
       alert('Review deleted successfully.');
-    } catch(err){ var msg=(err&&err.message?err.message:'Unknown error'); alert('Could not delete review: '+msg); console.error(err); }
+    } catch(err){
+      var msg=(err&&err.message?err.message:'Unknown error');
+      alert('Could not delete review: '+msg);
+      console.error('Delete review error:',err);
+      if(button){ button.disabled=false; button.textContent='DELETE'; }
+    }
   }
 
   if(open)open.addEventListener('click',function(){if(hasSubmitted())return;setStatus('',true);if(modal){modal.classList.add('show');modal.setAttribute('aria-hidden','false');}});
@@ -483,6 +497,15 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
   if(modal)modal.addEventListener('click',function(e){if(e.target===modal)closeModal();});
   stars.forEach(function(b){b.addEventListener('click',function(){selected=Number(b.getAttribute('data-rating'))||5;paint();});});
   if(form)form.addEventListener('submit',submitReview);
+
+  // Event delegation keeps DELETE working after reviews are re-rendered.
+  if(recent) recent.addEventListener('click',function(e){
+    var btn=e.target && e.target.closest ? e.target.closest('.delete-review') : null;
+    if(!btn || !recent.contains(btn)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    deleteReview(btn.getAttribute('data-id'),btn);
+  });
 
   if(openAdmin)openAdmin.addEventListener('click',function(){setStatus('',true,adminStatus);if(adminModal){adminModal.classList.add('show');adminModal.setAttribute('aria-hidden','false');updateAdminUI();}});
   if(closeAdmin)closeAdmin.addEventListener('click',closeAdminModal);
