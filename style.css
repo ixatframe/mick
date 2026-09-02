@@ -1314,3 +1314,25 @@ footer span{opacity:.72}
 .profile-stats-3 .views-stat span{display:block;margin:2px 0 4px;font-size:8px;color:#87939b;font-weight:700;letter-spacing:.04em}
 .profile-stats-3 .views-stat b{color:#087bd9;white-space:nowrap}
 @media(max-width:520px){.profile-stats-3{grid-template-columns:1fr 1fr 1.2fr}.profile-stats-3 .views-stat{padding-left:8px}.profile-stats-3 .views-stat b{font-size:14px}}
+
+/* Trading rating */
+.trade-rating{margin-top:18px;padding:15px 0 2px;border-top:1px solid #e3e6e9;text-align:center}
+.trade-rating-head{display:flex;align-items:center;justify-content:space-between;text-align:left}
+.trade-rating small{display:block;font-size:8px;color:#8d969d;letter-spacing:.16em;font-weight:800}
+.trade-rating strong{display:block;margin-top:4px;font-size:24px;color:#263a74;line-height:1}
+.rating-stars{font-size:20px;letter-spacing:1px;color:#f4b400;text-shadow:0 1px 8px rgba(244,180,0,.2)}
+.trade-rating p{margin:9px 0 12px;font-size:8px;color:#8d969d;letter-spacing:.12em;font-weight:800}
+.leave-review-btn{width:100%;border:0;border-radius:5px;padding:10px;background:linear-gradient(135deg,#1d277c,#087bd9);color:#fff;font-size:9px;font-weight:800;letter-spacing:.08em;cursor:pointer;box-shadow:0 5px 14px rgba(20,74,155,.18)}
+.leave-review-btn:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.review-modal{position:fixed;inset:0;background:rgba(8,16,30,.55);backdrop-filter:blur(5px);display:none;align-items:center;justify-content:center;z-index:9999;padding:20px}
+.review-modal.show{display:flex}
+.review-dialog{position:relative;width:min(390px,100%);padding:24px;border-radius:14px;background:#fff;box-shadow:0 24px 80px rgba(0,0,0,.28);animation:reviewPop .2s ease-out}
+.review-dialog>small{font-size:9px;letter-spacing:.16em;color:#087bd9;font-weight:800}.review-dialog h3{margin:7px 0 18px;color:#26344c}
+.review-close{position:absolute;right:13px;top:10px;border:0;background:none;font-size:24px;color:#8a949b;cursor:pointer}
+#reviewForm{display:grid;gap:10px}#reviewForm input,#reviewForm select,#reviewForm textarea{width:100%;box-sizing:border-box;border:1px solid #dce3e8;border-radius:6px;padding:11px;font:12px Arial,sans-serif;outline:none;background:#fbfcfd}#reviewForm textarea{min-height:78px;resize:vertical}
+.star-picker{display:flex;justify-content:center;gap:5px}.star-picker button{border:0;background:none;padding:0;font-size:29px;color:#d7dde2;cursor:pointer}.star-picker button.active{color:#f4b400}
+.submit-review{border:0;border-radius:6px;padding:12px;background:linear-gradient(135deg,#1d277c,#087bd9);color:#fff;font-size:10px;font-weight:800;letter-spacing:.1em;cursor:pointer}
+@keyframes reviewPop{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}
+
+/* Latest trading reviews */
+.recent-reviews{margin-top:14px;text-align:left;display:grid;gap:7px}.recent-title{text-align:center;font-size:8px;font-weight:800;letter-spacing:.14em;color:#8d969d;margin:2px 0 3px}.review-item{padding:9px 10px;border:1px solid #e4e9ef;border-radius:7px;background:linear-gradient(135deg,#fff,#f5f8fb);box-shadow:0 4px 12px rgba(35,59,100,.05)}.review-item-top{display:flex;justify-content:space-between;align-items:center;gap:8px}.review-item-top b{font-size:10px;color:#263a74}.review-item-top span{font-size:10px;letter-spacing:1px;color:#f4b400;white-space:nowrap}.review-item small{display:block;margin-top:3px;font-size:7px;font-weight:800;letter-spacing:.08em;color:#087bd9}.review-item p{margin:5px 0 0!important;font-size:9px!important;line-height:1.35!important;letter-spacing:0!important;color:#66717b!important;font-weight:600!important}.leave-review-btn:disabled,.leave-review-btn.review-done{cursor:not-allowed;opacity:.68;background:linear-gradient(135deg,#667085,#98a2b3);transform:none}

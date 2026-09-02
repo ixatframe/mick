@@ -39,7 +39,7 @@
 
   <section id="profile" class="profile">
     <aside class="profile-card">
-      <div class="avatar"><img src="https://xatimg.com/image/dbQqRyJi59ED.png" alt="Mick profile photo"><i class="verified-badge" aria-label="Verified">✓</i><div class="avatar-ring"></div></div>
+      <div class="avatar"><img src="https://xatimg.com/image/iN1sVOnkIwGq.png" alt="Mick profile photo"><i class="verified-badge" aria-label="Verified">✓</i><div class="avatar-ring"></div></div>
       <h1>Mick</h1>
       <p>@1984</p>
       <div class="classic-actions">
@@ -52,6 +52,42 @@
         <div><b>2014</b><small>MEMBER SINCE</small></div>
         <div><b>1984</b><small>PROFILE ID</small></div>
         <div class="views-stat"><b id="profileViewsCompact">1,2M</b><span id="profileViewsReal">(1.200.000)</span><small>PROFILE VIEWS</small></div>
+      </div>
+
+      <section class="trade-rating" aria-label="Trading rating">
+        <div class="trade-rating-head">
+          <div>
+            <small>TRADING RATING</small>
+            <strong id="ratingAverage">5.0</strong>
+          </div>
+          <div class="rating-stars" aria-label="5 out of 5 stars">★★★★★</div>
+        </div>
+        <p><span id="ratingCount">0</span> VERIFIED REVIEWS</p>
+        <button class="leave-review-btn" id="openReview">LEAVE A REVIEW</button>
+        <div class="recent-reviews" id="recentReviews" aria-live="polite"></div>
+      </section>
+
+      <div class="review-modal" id="reviewModal" aria-hidden="true">
+        <div class="review-dialog">
+          <button class="review-close" id="closeReview" aria-label="Close">×</button>
+          <small>TRADING FEEDBACK</small>
+          <h3>Rate your trade</h3>
+          <form id="reviewForm">
+            <input id="reviewName" maxlength="24" placeholder="Your xat name" required>
+            <select id="reviewType" required>
+              <option value="XATS trade">XATS trade</option>
+              <option value="DAYS trade">DAYS trade</option>
+              <option value="ID trade">ID trade</option>
+              <option value="EVERYPOWER trade">EVERYPOWER trade</option>
+              <option value="Other trade">Other trade</option>
+            </select>
+            <div class="star-picker" id="starPicker" aria-label="Choose rating">
+              <button type="button" data-rating="1">★</button><button type="button" data-rating="2">★</button><button type="button" data-rating="3">★</button><button type="button" data-rating="4">★</button><button type="button" data-rating="5" class="active">★</button>
+            </div>
+            <textarea id="reviewText" maxlength="120" placeholder="Short feedback about the trade" required></textarea>
+            <button type="submit" class="submit-review">POST REVIEW</button>
+          </form>
+        </div>
       </div>
     </aside>
 
@@ -247,6 +283,84 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
   }
 
   countView();
+})();
+</script>
+
+<script>
+// Trading reviews stored locally in the visitor's browser.
+(() => {
+  const KEY = 'mick1984-trade-reviews';
+  const SUBMITTED_KEY = 'mick1984-review-submitted';
+  const BASE_REVIEWS = 94;
+  const BASE_RATING_TOTAL = BASE_REVIEWS * 5;
+  const modal = document.getElementById('reviewModal');
+  const open = document.getElementById('openReview');
+  const close = document.getElementById('closeReview');
+  const form = document.getElementById('reviewForm');
+  const stars = [...document.querySelectorAll('#starPicker button')];
+  const avg = document.getElementById('ratingAverage');
+  const count = document.getElementById('ratingCount');
+  const recent = document.getElementById('recentReviews');
+  let selected = 5;
+
+  function reviews(){ try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch { return []; } }
+  function esc(v){ return String(v).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
+  function updateButton(){
+    if(!open) return;
+    if(localStorage.getItem(SUBMITTED_KEY)){
+      open.textContent = 'REVIEW ALREADY SUBMITTED';
+      open.disabled = true;
+      open.classList.add('review-done');
+    } else {
+      open.textContent = 'LEAVE A REVIEW';
+      open.disabled = false;
+      open.classList.remove('review-done');
+    }
+  }
+  function renderRecent(list){
+    if(!recent) return;
+    const latest = list.slice(-3).reverse();
+    if(!latest.length){ recent.innerHTML = ''; return; }
+    recent.innerHTML = '<div class="recent-title">LATEST REVIEWS</div>' + latest.map(r => `
+      <article class="review-item">
+        <div class="review-item-top"><b>${esc(r.name || 'Trader')}</b><span>${'★'.repeat(Number(r.rating)||5)}</span></div>
+        <small>${esc(r.type || 'Trade')}</small>
+        <p>${esc(r.text || '')}</p>
+      </article>`).join('');
+  }
+  function update(){
+    const list = reviews();
+    const userTotal = list.reduce((a,r)=>a + Number(r.rating || 0), 0);
+    const totalCount = BASE_REVIEWS + list.length;
+    const value = (BASE_RATING_TOTAL + userTotal) / totalCount;
+    count.textContent = totalCount;
+    avg.textContent = value.toFixed(1);
+    renderRecent(list);
+    updateButton();
+  }
+  function paint(){ stars.forEach((b,i)=>b.classList.toggle('active', i < selected)); }
+  open?.addEventListener('click',()=>{
+    if(localStorage.getItem(SUBMITTED_KEY)) return;
+    modal.classList.add('show'); modal.setAttribute('aria-hidden','false');
+  });
+  close?.addEventListener('click',()=>{ modal.classList.remove('show'); modal.setAttribute('aria-hidden','true'); });
+  modal?.addEventListener('click',e=>{ if(e.target===modal) close.click(); });
+  stars.forEach(b=>b.addEventListener('click',()=>{ selected=Number(b.dataset.rating); paint(); }));
+  form?.addEventListener('submit',e=>{
+    e.preventDefault();
+    if(localStorage.getItem(SUBMITTED_KEY)) return;
+    const list=reviews();
+    const name=document.getElementById('reviewName').value.trim();
+    if(list.some(r => String(r.name||'').toLowerCase() === name.toLowerCase())){
+      alert('A review from this name already exists on this browser.'); return;
+    }
+    list.push({name, type:document.getElementById('reviewType').value, text:document.getElementById('reviewText').value.trim(), rating:selected, date:new Date().toISOString()});
+    localStorage.setItem(KEY,JSON.stringify(list));
+    localStorage.setItem(SUBMITTED_KEY,'1');
+    form.reset(); selected=5; paint(); update(); close.click();
+    alert('Review saved. Thank you!');
+  });
+  paint(); update();
 })();
 </script>
 
