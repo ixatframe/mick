@@ -50,7 +50,7 @@
       </div>
       <div class="profile-stats profile-stats-3">
         <div><b>2014</b><small>MEMBER SINCE</small></div>
-        <div><b>1984</b><small>XAT ID</small></div>
+        <div><b>1984</b><small>PROFILE ID</small></div>
         <div class="views-stat"><b id="profileViewsCompact">1,2M</b><span id="profileViewsReal">(1.200.000)</span><small>PROFILE VIEWS</small></div>
       </div>
 
@@ -474,7 +474,8 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
       var res=await fetch(SUPABASE_URL+'/rest/v1/'+TABLE+'?id=eq.'+encodeURIComponent(id),{method:'DELETE',headers:headers({'Prefer':'return=representation'},true)});
       if(!res.ok) throw new Error(await res.text());
       reviews=reviews.filter(function(r){return String(r.id)!==String(id);}); render();
-    } catch(err){ alert('Could not delete review. Check the Supabase DELETE policy.'); console.error(err); }
+      alert('Review deleted successfully.');
+    } catch(err){ var msg=(err&&err.message?err.message:'Unknown error'); alert('Could not delete review: '+msg); console.error(err); }
   }
 
   if(open)open.addEventListener('click',function(){if(hasSubmitted())return;setStatus('',true);if(modal){modal.classList.add('show');modal.setAttribute('aria-hidden','false');}});
