@@ -376,7 +376,7 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
     recent.innerHTML='<div class="recent-title">LATEST REVIEWS</div>'+latest.map(function(r){
       var rating=Math.max(1,Math.min(5,Number(r.rating)||5));
       var del=isAdmin() && r.id != null ? '<button class="delete-review" data-id="'+esc(r.id)+'" title="Delete review">DELETE</button>' : '';
-      return '<article class="review-item"><div class="review-item-top"><b>'+esc(r.name)+'</b><span>'+'★'.repeat(rating)+'</span></div><small>'+esc(r.type)+'</small><p>'+esc(r.text)+'</p>'+del+'</article>';
+      return '<article class="review-item"><div class="review-item-top"><b>'+esc(r.name)+'</b><div class="review-rating"><span class="review-stars">'+'★'.repeat(rating)+'</span><span class="review-verified"><i>✓</i> REVIEW VERIFIED</span></div></div><small>'+esc(r.type)+'</small><p>'+esc(r.text)+'</p>'+del+'</article>';
     }).join('');
     Array.prototype.forEach.call(recent.querySelectorAll('.delete-review'), function(btn){
       btn.addEventListener('click', function(){ deleteReview(btn.getAttribute('data-id')); });
