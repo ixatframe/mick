@@ -64,7 +64,6 @@
         </div>
         <p><span id="ratingCount">0</span> VERIFIED REVIEWS</p>
         <button class="leave-review-btn" id="openReview">LEAVE A REVIEW</button>
-        <button class="admin-reviews-btn" id="openAdmin" type="button">ADMIN</button>
         <div class="recent-reviews" id="recentReviews" aria-live="polite"></div>
       </section>
 
@@ -92,23 +91,6 @@
         </div>
       </div>
 
-      <div class="review-modal admin-modal" id="adminModal" aria-hidden="true">
-        <div class="review-dialog admin-dialog">
-          <button class="review-close" id="closeAdmin" aria-label="Close">×</button>
-          <small>OWNER</small>
-          <h3>Manage reviews</h3>
-          <div id="adminStatus" role="status" style="min-height:18px;margin:0 0 10px;font-size:12px;font-weight:700;"></div>
-          <form id="adminLoginForm">
-            <input id="adminEmail" type="email" autocomplete="email" placeholder="Admin email" required>
-            <input id="adminPassword" type="password" autocomplete="current-password" placeholder="Password" required>
-            <button type="submit" class="submit-review" id="adminLoginBtn">LOGIN</button>
-          </form>
-          <div id="adminPanel" hidden>
-            <p class="admin-note">Delete buttons are visible only in this admin session.</p>
-            <button type="button" class="admin-logout" id="adminLogout">LOG OUT</button>
-          </div>
-        </div>
-      </div>
     </aside>
 
     <main>
@@ -307,7 +289,7 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
 </script>
 
 <script>
-// Trading reviews + owner-only administration via Supabase Auth.
+// Trading reviews via Supabase.
 (function () {
   'use strict';
 
@@ -315,7 +297,6 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
   var SUPABASE_KEY = 'sb_publishable_cfRaH4RXHjdQvDwH_NqlXw_u4oZ5vBA';
   var TABLE = 'reviews';
   var SUBMITTED_KEY = 'mick1984-review-submitted';
-  var ADMIN_SESSION_KEY = 'mick1984-admin-session';
   var BASE_REVIEWS = 94;
   var BASE_RATING_TOTAL = BASE_REVIEWS * 5;
 
@@ -331,13 +312,6 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
   var reviews = [];
   var statusEl = document.getElementById('reviewStatus');
 
-  var adminModal = document.getElementById('adminModal');
-  var openAdmin = document.getElementById('openAdmin');
-  var closeAdmin = document.getElementById('closeAdmin');
-  var adminForm = document.getElementById('adminLoginForm');
-  var adminPanel = document.getElementById('adminPanel');
-  var adminStatus = document.getElementById('adminStatus');
-  var adminLogout = document.getElementById('adminLogout');
 
   function setStatus(message, ok, el) {
     el = el || statusEl;
@@ -348,14 +322,9 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
 
   function hasSubmitted() { try { return localStorage.getItem(SUBMITTED_KEY) === '1'; } catch (e) { return false; } }
   function markSubmitted() { try { localStorage.setItem(SUBMITTED_KEY, '1'); } catch (e) {} }
-  function getAdminSession() { try { var x = sessionStorage.getItem(ADMIN_SESSION_KEY); return x ? JSON.parse(x) : null; } catch (e) { return null; } }
-  function saveAdminSession(x) { try { sessionStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(x)); } catch (e) {} }
-  function clearAdminSession() { try { sessionStorage.removeItem(ADMIN_SESSION_KEY); } catch (e) {} }
-  function isAdmin() { var s = getAdminSession(); return !!(s && s.access_token); }
 
-  function headers(extra, admin) {
-    var token = admin && getAdminSession() ? getAdminSession().access_token : SUPABASE_KEY;
-    var h = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + token };
+  function headers(extra) {
+    var h = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY };
     if (extra) Object.keys(extra).forEach(function (k) { h[k] = extra[k]; });
     return h;
   }
@@ -375,8 +344,7 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
     if (!latest.length) { recent.innerHTML=''; return; }
     recent.innerHTML='<div class="recent-title">LATEST REVIEWS</div>'+latest.map(function(r){
       var rating=Math.max(1,Math.min(5,Number(r.rating)||5));
-      var del=isAdmin() && r.id != null ? '<button type="button" class="delete-review" data-id="'+esc(r.id)+'" title="Delete review">DELETE</button>' : '';
-      return '<article class="review-item"><div class="review-item-top"><b>'+esc(r.name)+'</b><div class="review-rating"><span class="review-stars">'+'★'.repeat(rating)+'</span><span class="review-verified"><i>✓</i> REVIEW VERIFIED</span></div></div><small>'+esc(r.type)+'</small><p>'+esc(r.text)+'</p>'+del+'</article>';
+      return '<article class="review-item"><div class="review-item-top"><b>'+esc(r.name)+'</b><div class="review-rating"><span class="review-stars">'+'★'.repeat(rating)+'</span><span class="review-verified"><i>✓</i> REVIEW VERIFIED</span></div></div><small>'+esc(r.type)+'</small><p>'+esc(r.text)+'</p></article>';
     }).join('');
   }
 
@@ -386,7 +354,7 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
     var value=(BASE_RATING_TOTAL+userTotal)/totalCount;
     if(count) count.textContent=totalCount;
     if(avg) avg.textContent=value.toFixed(1);
-    renderRecent(reviews); updateButton(); updateAdminUI();
+    renderRecent(reviews); updateButton();
   }
 
   async function loadReviews() {
@@ -400,7 +368,6 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
 
   function paint(){ stars.forEach(function(b,i){b.classList.toggle('active',i<selected);}); }
   function closeModal(){ if(modal){modal.classList.remove('show');modal.setAttribute('aria-hidden','true');} }
-  function closeAdminModal(){ if(adminModal){adminModal.classList.remove('show');adminModal.setAttribute('aria-hidden','true');} }
 
   async function submitReview(e) {
     if(e)e.preventDefault(); if(hasSubmitted()){closeModal();return false;}
@@ -424,88 +391,6 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
     return false;
   }
 
-  async function loginAdmin(e) {
-    if(e){ e.preventDefault(); e.stopPropagation(); }
-    var emailEl=document.getElementById('adminEmail');
-    var passwordEl=document.getElementById('adminPassword');
-    var loginBtn=document.getElementById('adminLoginBtn');
-    var email=emailEl ? emailEl.value.trim() : '';
-    var password=passwordEl ? passwordEl.value : '';
-    if(!email||!password){setStatus('Enter your admin email and password.',false,adminStatus);return false;}
-    if(loginBtn){loginBtn.disabled=true;loginBtn.textContent='SIGNING IN...';}
-    setStatus('Signing in...',true,adminStatus);
-    try {
-      var res=await fetch(SUPABASE_URL+'/auth/v1/token?grant_type=password',{
-        method:'POST',
-        headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'},
-        body:JSON.stringify({email:email,password:password})
-      });
-      var raw=await res.text();
-      var data={}; try{data=raw?JSON.parse(raw):{};}catch(parseErr){}
-      if(!res.ok||!data.access_token){
-        throw new Error(data.error_description||data.message||data.msg||raw||('HTTP '+res.status));
-      }
-      saveAdminSession(data);
-      setStatus('Admin access enabled. You can now delete reviews.',true,adminStatus);
-      updateAdminUI();
-      renderRecent(reviews);
-      setTimeout(closeAdminModal,500);
-    } catch(err){
-      console.error('Admin login error:',err);
-      setStatus('Login failed: '+(err&&err.message?err.message:'Unknown error'),false,adminStatus);
-    } finally {
-      if(loginBtn){loginBtn.disabled=false;loginBtn.textContent='LOGIN';}
-    }
-    return false;
-  }
-
-  function updateAdminUI(){
-    if(!adminForm||!adminPanel)return;
-    adminForm.hidden=isAdmin(); adminPanel.hidden=!isAdmin();
-  }
-
-  async function deleteReview(id, button) {
-    if(!id){ alert('Review ID is missing.'); return; }
-    if(!isAdmin()){
-      alert('Admin session expired. Please log in again.');
-      if(openAdmin) openAdmin.click();
-      return;
-    }
-
-    if(button){ button.disabled=true; button.textContent='DELETING...'; }
-
-    try {
-      // Delete the exact database row. Do not require a returned row because
-      // Supabase can return 204/minimal even after a successful DELETE.
-      var url=SUPABASE_URL+'/rest/v1/'+TABLE+'?id=eq.'+encodeURIComponent(String(id));
-      var res=await fetch(url,{
-        method:'DELETE',
-        cache:'no-store',
-        headers:headers({
-          'Prefer':'return=minimal',
-          'Accept':'application/json'
-        },true)
-      });
-
-      var raw=await res.text();
-      if(!res.ok) throw new Error(raw||('HTTP '+res.status));
-
-      // Always reload from Supabase and verify the actual database state.
-      await loadReviews();
-      var stillExists=reviews.some(function(row){ return String(row.id)===String(id); });
-
-      if(stillExists){
-        throw new Error('Supabase still contains review ID '+id+'. Delete permission or RLS policy blocked the operation.');
-      }
-
-      // The row is gone from Supabase. The page was already refreshed above.
-    } catch(err){
-      var msg=(err&&err.message?err.message:'Unknown error');
-      alert('Could not delete review: '+msg);
-      console.error('Delete review error:',err);
-      if(button){ button.disabled=false; button.textContent='DELETE'; }
-    }
-  }
 
   if(open)open.addEventListener('click',function(){if(hasSubmitted())return;setStatus('',true);if(modal){modal.classList.add('show');modal.setAttribute('aria-hidden','false');}});
   if(close)close.addEventListener('click',closeModal);
@@ -513,22 +398,6 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
   stars.forEach(function(b){b.addEventListener('click',function(){selected=Number(b.getAttribute('data-rating'))||5;paint();});});
   if(form)form.addEventListener('submit',submitReview);
 
-  // Event delegation keeps DELETE buttons working after review cards are re-rendered.
-  document.addEventListener('click',function(e){
-    var btn=e.target && e.target.closest ? e.target.closest('.delete-review') : null;
-    if(!btn) return;
-    e.preventDefault();
-    e.stopPropagation();
-    deleteReview(btn.getAttribute('data-id'),btn);
-  });
-
-  if(openAdmin)openAdmin.addEventListener('click',function(){setStatus('',true,adminStatus);if(adminModal){adminModal.classList.add('show');adminModal.setAttribute('aria-hidden','false');updateAdminUI();}});
-  if(closeAdmin)closeAdmin.addEventListener('click',closeAdminModal);
-  if(adminModal)adminModal.addEventListener('click',function(e){if(e.target===adminModal)closeAdminModal();});
-  if(adminForm)adminForm.addEventListener('submit',loginAdmin);
-  var adminLoginBtn=document.getElementById('adminLoginBtn');
-  if(adminLoginBtn)adminLoginBtn.addEventListener('click',loginAdmin);
-  if(adminLogout)adminLogout.addEventListener('click',function(){clearAdminSession();setStatus('Logged out.',true,adminStatus);render();});
 
   paint(); loadReviews();
 })();
