@@ -1338,3 +1338,12 @@ footer span{opacity:.72}
 .recent-reviews{margin-top:14px;text-align:left;display:grid;gap:7px}.recent-title{text-align:center;font-size:8px;font-weight:800;letter-spacing:.14em;color:#8d969d;margin:2px 0 3px}.review-item{padding:9px 10px;border:1px solid #e4e9ef;border-radius:7px;background:linear-gradient(135deg,#fff,#f5f8fb);box-shadow:0 4px 12px rgba(35,59,100,.05)}.review-item-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}.review-item-top b{font-size:10px;color:#263a74;padding-top:1px}.review-rating{display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:max-content}.review-stars{font-size:10px;letter-spacing:1px;color:#f4b400;white-space:nowrap}.review-verified{display:flex;align-items:center;gap:3px;font-size:6px!important;letter-spacing:.08em!important;font-weight:800;color:#6f7b84!important;white-space:nowrap}.review-verified i{display:inline-grid;place-items:center;width:10px;height:10px;border-radius:50%;background:#28a745;color:#fff;font-style:normal;font-size:7px;line-height:1;font-weight:900;letter-spacing:0}.review-item small{display:block;margin-top:3px;font-size:7px;font-weight:800;letter-spacing:.08em;color:#087bd9}.review-item p{margin:5px 0 0!important;font-size:9px!important;line-height:1.35!important;letter-spacing:0!important;color:#66717b!important;font-weight:600!important}.leave-review-btn:disabled,.leave-review-btn.review-done{cursor:not-allowed;opacity:.68;background:linear-gradient(135deg,#667085,#98a2b3);transform:none}
 
 
+
+
+/* Latest reviews: numbered list with scroll for up to 5 reviews */
+.reviews-scroll{display:grid;gap:7px;max-height:357px;overflow-y:auto;padding-right:4px;scrollbar-width:thin;scrollbar-color:#aebdca transparent}
+.reviews-scroll::-webkit-scrollbar{width:5px}
+.reviews-scroll::-webkit-scrollbar-thumb{background:#aebdca;border-radius:8px}
+.review-name-wrap{display:flex;align-items:center;gap:7px;min-width:0}
+.review-number{display:inline-grid;place-items:center;flex:0 0 18px;width:18px;height:18px;border-radius:50%;background:linear-gradient(135deg,#1d277c,#087bd9);color:#fff;font-size:8px;font-weight:800;line-height:1}
+.review-name-wrap b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
