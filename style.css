@@ -1347,3 +1347,59 @@ footer span{opacity:.72}
 .review-name-wrap{display:flex;align-items:center;gap:7px;min-width:0}
 .review-number{display:inline-grid;place-items:center;flex:0 0 18px;width:18px;height:18px;border-radius:50%;background:linear-gradient(135deg,#1d277c,#087bd9);color:#fff;font-size:8px;font-weight:800;line-height:1}
 .review-name-wrap b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+
+/* IDS availability + days remaining */
+.id-table>div{
+  grid-template-columns:1.45fr .95fr 1.05fr .65fr !important;
+  gap:8px;
+}
+.id-table .thead b{
+  white-space:nowrap;
+}
+.id-table .reg-available,
+.id-table .reg-unavailable,
+.id-table .days-remaining,
+.id-table .days-empty{
+  width:auto !important;
+  height:auto !important;
+  line-height:normal !important;
+  border:0 !important;
+  border-radius:0 !important;
+  text-align:center !important;
+  font-size:8px !important;
+  font-weight:700;
+  letter-spacing:.08em;
+}
+.id-table .reg-available{
+  color:#239765;
+}
+.id-table .reg-unavailable{
+  color:#d95b62;
+}
+.id-table .days-remaining{
+  color:#c98700;
+  font-size:12px !important;
+  letter-spacing:0;
+}
+.id-table .days-empty{
+  color:#9aa5ad;
+  font-size:12px !important;
+  letter-spacing:0;
+}
+@media(max-width:520px){
+  .id-table>div{
+    grid-template-columns:1.25fr .9fr 1fr .55fr !important;
+    gap:4px;
+    padding:10px 6px !important;
+  }
+  .id-table .thead,
+  .id-table>div{
+    font-size:8px !important;
+  }
+  .id-table .reg-available,
+  .id-table .reg-unavailable{
+    font-size:6px !important;
+    letter-spacing:.04em;
+  }
+}

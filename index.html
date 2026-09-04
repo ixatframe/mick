@@ -140,11 +140,35 @@
           <article class="card ids">
             <div class="icon packet-icon-img"><img src="https://xat.com/content/web/R00250/img/navbar/auctions.svg" alt="XAT IDs"></div><small>XAT IDS</small><h3>Buy/Sell IDS</h3>
             <div class="id-table">
-              <div class="thead"><b>IDS</b><b>REGLINK</b><b>PRICE</b></div>
-              <div><strong> <span class="id-bullet" aria-hidden="true">•</span>✦99000</strong><span class="good">✓</span><strong>150K</strong></div>
-              <div><strong> <span class="id-bullet" aria-hidden="true">•</span>✦106080</strong><span class="bad">×</span><strong>110K</strong></div>
-              <div><strong> <span class="id-bullet" aria-hidden="true">•</span>✦1006001</strong><span class="bad">×</span><strong>75K</strong></div>
-              <div><strong> <span class="id-bullet" aria-hidden="true">•</span>✦1553333003</strong><span class="good">✓</span><strong>5K</strong></div>
+              <div class="thead"><b>IDS</b><b>REGLINK</b><b>DAYS REMAINING</b><b>PRICE</b></div>
+
+              <div>
+                <strong><span class="id-bullet" aria-hidden="true">•</span>✦99000</strong>
+                <span class="reg-available">✓ AVAILABLE</span>
+                <span class="days-empty">—</span>
+                <strong>150K</strong>
+              </div>
+
+              <div>
+                <strong><span class="id-bullet" aria-hidden="true">•</span>✦106080</strong>
+                <span class="reg-unavailable">× LOCKED</span>
+                <span class="days-remaining" data-days="12">12</span>
+                <strong>110K</strong>
+              </div>
+
+              <div>
+                <strong><span class="id-bullet" aria-hidden="true">•</span>✦1006001</strong>
+                <span class="reg-unavailable">× LOCKED</span>
+                <span class="days-remaining" data-days="4">4</span>
+                <strong>75K</strong>
+              </div>
+
+              <div>
+                <strong><span class="id-bullet" aria-hidden="true">•</span>✦1553333003</strong>
+                <span class="reg-available">✓ AVAILABLE</span>
+                <span class="days-empty">—</span>
+                <strong>5K</strong>
+              </div>
             </div>
             <div class="currencies"><b>🪙</b> XATS <b>€</b> EUR <b>$</b> USD</div>
             <span class="arrow">↗</span>
@@ -402,6 +426,60 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
 
   paint(); loadReviews();
 })();
+</script>
+
+
+<script id="ids-countdown-script">
+/*
+  CHANGE ONLY data-days="NUMBER" in each unavailable ID row.
+  Example: data-days="24"
+
+  The countdown starts from this date.
+  Leave it unchanged unless you intentionally want to reset all countdowns.
+*/
+const IDS_COUNTDOWN_START = '2026-09-04';
+
+function updateIdsCountdown() {
+  const start = new Date(IDS_COUNTDOWN_START + 'T00:00:00');
+  const today = new Date();
+
+  start.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+
+  const elapsedDays = Math.max(0, Math.floor((today.getTime() - start.getTime()) / 86400000));
+
+  document.querySelectorAll('.days-remaining[data-days]').forEach(function(el) {
+    const totalDays = Number(el.getAttribute('data-days'));
+
+    if (!Number.isFinite(totalDays)) return;
+
+    const remaining = Math.max(0, totalDays - elapsedDays);
+    const row = el.parentElement;
+    const status = row ? row.querySelector('.reg-unavailable, .reg-available') : null;
+
+    if (remaining === 0) {
+      el.textContent = '—';
+      if (status) {
+        status.textContent = '✓ AVAILABLE';
+        status.classList.remove('reg-unavailable');
+        status.classList.add('reg-available');
+      }
+    } else {
+      el.textContent = remaining;
+      if (status) {
+        status.textContent = '× LOCKED';
+        status.classList.remove('reg-available');
+        status.classList.add('reg-unavailable');
+      }
+    }
+  });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', updateIdsCountdown);
+} else {
+  updateIdsCountdown();
+}
 </script>
 
 </body>
