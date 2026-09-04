@@ -340,13 +340,12 @@ links.forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
 
   function renderRecent(list) {
     if (!recent) return;
-    // Keep up to 5 latest reviews. The area scrolls after 3 cards.
-    var latest = list.slice(0,5);
+    var latest = list.slice(0,3);
     if (!latest.length) { recent.innerHTML=''; return; }
-    recent.innerHTML='<div class="recent-title">LATEST REVIEWS</div><div class="reviews-scroll">'+latest.map(function(r,index){
+    recent.innerHTML='<div class="recent-title">LATEST REVIEWS</div>'+latest.map(function(r){
       var rating=Math.max(1,Math.min(5,Number(r.rating)||5));
-      return '<article class="review-item"><div class="review-item-top"><div class="review-name-wrap"><span class="review-number">'+(index+1)+'</span><b>'+esc(r.name)+'</b></div><div class="review-rating"><span class="review-stars">'+'★'.repeat(rating)+'</span><span class="review-verified"><i>✓</i> REVIEW VERIFIED</span></div></div><small>'+esc(r.type)+'</small><p>'+esc(r.text)+'</p></article>';
-    }).join('')+'</div>';
+      return '<article class="review-item"><div class="review-item-top"><b>'+esc(r.name)+'</b><div class="review-rating"><span class="review-stars">'+'★'.repeat(rating)+'</span><span class="review-verified"><i>✓</i> REVIEW VERIFIED</span></div></div><small>'+esc(r.type)+'</small><p>'+esc(r.text)+'</p></article>';
+    }).join('');
   }
 
   function render() {
