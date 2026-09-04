@@ -1339,26 +1339,11 @@ footer span{opacity:.72}
 
 
 
-/* Hide xat.me global host header when this stylesheet is injected into the xat.me page.
-   Does not affect this profile's own .topbar. */
-body > header,
-#header,
-.xat-header,
-.site-header,
-.global-header,
-.navbar:not(.main-nav),
-.top-nav:not(.top-links),
-.xat-navbar,
-#navbar {
-  display:none !important;
-  visibility:hidden !important;
-  height:0 !important;
-  min-height:0 !important;
-  margin:0 !important;
-  padding:0 !important;
-  border:0 !important;
-}
 
-html, body {
-  scroll-padding-top:0 !important;
-}
+/* Latest reviews: numbered list with scroll for up to 5 reviews */
+.reviews-scroll{display:grid;gap:7px;max-height:357px;overflow-y:auto;padding-right:4px;scrollbar-width:thin;scrollbar-color:#aebdca transparent}
+.reviews-scroll::-webkit-scrollbar{width:5px}
+.reviews-scroll::-webkit-scrollbar-thumb{background:#aebdca;border-radius:8px}
+.review-name-wrap{display:flex;align-items:center;gap:7px;min-width:0}
+.review-number{display:inline-grid;place-items:center;flex:0 0 18px;width:18px;height:18px;border-radius:50%;background:linear-gradient(135deg,#1d277c,#087bd9);color:#fff;font-size:8px;font-weight:800;line-height:1}
+.review-name-wrap b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
